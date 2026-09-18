@@ -1,8 +1,9 @@
 # GLIDE
 
-A phone-first, ad-free paint maze. Drag in any direction and turn without lifting your finger, or use arrow keys/WASD. Each turn slides until a wall. Paint all floor tiles to finish.
+A phone-first, ad-free paint maze. Drag in any direction and turn without lifting your finger, or use arrow keys/WASD. Each turn slides until a wall, now about 75% faster. Paint all floor tiles to finish.
 
 - Levels 1–100 gradually grow from tiny mazes to medium-hard mazes.
+- Optional Brain Mode uses larger mazes and two numbered beacons that must be reached in order while painting every tile. It has separate completion records and awards extra coins.
 - Levels 101+ vary independently of the level number. Same level number always creates the same maze.
 - The generator tests whether sliding from the start can cover every tile. A guaranteed winding corridor is used if a random layout fails after 180 attempts.
 - Progress, coins, and cosmetics are saved in this browser with localStorage. Each level tracks completion separately; jumping does not claim earlier levels.
