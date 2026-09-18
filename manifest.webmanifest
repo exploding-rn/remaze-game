@@ -1,0 +1,1 @@
+{"name":"GLIDE — Endless Paint Maze","short_name":"GLIDE","description":"Swipe, glide, paint. Endless deterministic mazes with no ads.","start_url":"./","scope":"./","display":"standalone","background_color":"#100d22","theme_color":"#100d22","icons":[{"src":"./icon.svg","sizes":"any","type":"image/svg+xml","purpose":"any maskable"}]}
