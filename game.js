@@ -39,6 +39,25 @@ function specialCoverage(g,start,specials,beacons=[]){
  }
  return canFinish&&covered.size===g.flat().filter(Boolean).length;
 }
+function canClearLevel(g,start,specials,beacons=[],limit=16000){
+ const w=g[0].length,floors=[];
+ g.forEach((row,y)=>row.forEach((floor,x)=>{if(floor)floors.push(y*w+x)}));
+ const bits=new Map(floors.map((index,i)=>[index,1n<<BigInt(i)]));
+ const goal=(1n<<BigInt(floors.length))-1n;
+ const queue=[{x:start.x,y:start.y,paint:bits.get(start.y*w+start.x),done:0}],seen=new Set();
+ for(let i=0;i<queue.length&&i<limit;i++){
+  const {x,y,paint,done}=queue[i];
+  if(paint===goal&&done===beacons.length)return true;
+  const key=`${x},${y},${paint},${done}`;if(seen.has(key))continue;seen.add(key);
+  for(const [dx,dy] of [[1,0],[-1,0],[0,1],[0,-1]]){
+   const next=traceMove(g,x,y,dx,dy,specials);if(!next.cells.length)continue;
+   let mask=paint,count=done;
+   for(const index of next.cells){mask|=bits.get(index);if(count<beacons.length&&index===beacons[count].y*w+beacons[count].x)count++}
+   queue.push({x:next.x,y:next.y,paint:mask,done:count});
+  }
+ }
+ return false;
+}
 function decorateLevel(level,seed,pairCount=0,bounceCount=0){
  if(!pairCount&&!bounceCount)return {...level,teleporters:[],bouncers:[]};
  const {grid,start}=level,r=rng(seed^0x7c4a217d),beacons=level.beacons||[];
@@ -52,7 +71,7 @@ function decorateLevel(level,seed,pairCount=0,bounceCount=0){
    for(let i=0;i<pairs;i++)teleporters.push({a:spots.pop(),b:spots.pop()});
    for(let i=0;i<bounce;i++)bouncers.push(spots.pop());
    const specials={teleporters,bouncers};
-   if(specialCoverage(grid,start,specials,beacons))return {...level,...specials};
+   if(specialCoverage(grid,start,specials,beacons)&&canClearLevel(grid,start,specials,beacons))return {...level,...specials};
   }
  }
  // A rare incompatible layout keeps the original solvable maze.
@@ -106,4 +125,4 @@ function generate(level,brain=false){
  const g=snake(cw,ch),start={x:1,y:1};
  return brain?{grid:g,start,beacons:chooseBeacons(g,start)}:{grid:g,start}
 }
-if(typeof module!=='undefined')module.exports={generate,slideCoverage,step,canVisitBeacons,traceMove,specialCoverage,decorateLevel};
+if(typeof module!=='undefined')module.exports={generate,slideCoverage,step,canVisitBeacons,traceMove,specialCoverage,canClearLevel,decorateLevel};

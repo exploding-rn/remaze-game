@@ -317,6 +317,7 @@ function validatePack(raw){
    if(new Set(occupied.map(p=>`${p.x},${p.y}`)).size!==occupied.length)throw Error(`Level ${i+1}: start, beacons and special tiles cannot overlap.`);
    const specials={teleporters:teleporters.map(pair=>({a:{x:pair.a.x,y:pair.a.y},b:{x:pair.b.x,y:pair.b.y}})),bouncers:bouncers.map(p=>({x:p.x,y:p.y}))};
    if(!specialCoverage(level.grid,level.start,specials,markers))throw Error(`Level ${i+1}: special tiles block coverage or ordered beacons.`);
+   if(level.grid.flat().filter(Boolean).length<=60&&!canClearLevel(level.grid,level.start,specials,markers,30000))throw Error(`Level ${i+1}: no route paints every tile and beacon.`);
    return {grid:level.grid,start:{x:level.start.x,y:level.start.y},beacons:markers.map(p=>({x:p.x,y:p.y})),...specials};
   });
  }
