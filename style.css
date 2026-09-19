@@ -40,3 +40,48 @@ body[data-ball=neon] .ball:after{background:var(--ball-color);box-shadow:0 0 14p
 .import-label{display:block;margin:12px 0;padding:13px;border:1px dashed var(--accent);border-radius:11px;text-align:center;color:var(--accent);font-size:11px;font-weight:900;cursor:pointer}.import-label input{display:none}
 .mod-row{display:flex;align-items:center;gap:5px;border-top:1px solid #ffffff26;padding:10px 0}.mod-row span{flex:1;min-width:0;font-size:11px;overflow-wrap:anywhere}.mod-row button{padding:8px 5px;font-size:9px}
 button:disabled{opacity:.4;cursor:not-allowed}button:disabled:active{transform:none}
+/* Special tiles stay visible after being painted. */
+#board .teleporter,#board .bouncer{outline:2px solid color-mix(in srgb,var(--accent2) 75%,transparent);outline-offset:-2px}
+#board .teleporter{background:color-mix(in srgb,var(--accent2) 33%,var(--tile))}
+#board .bouncer{background:color-mix(in srgb,#ffb65a 35%,var(--tile));outline-color:#ffb65a}
+#board .teleporter.painted{background:color-mix(in srgb,var(--accent2) 57%,var(--filled))}
+#board .bouncer.painted{background:color-mix(in srgb,#ffb65a 55%,var(--filled))}
+#board .teleporter:after,#board .bouncer:after{position:absolute;inset:0;display:grid;place-items:center;pointer-events:none;font-weight:950;font-size:clamp(12px,3.5vw,23px);text-shadow:0 1px 3px #0009;z-index:1}
+#board .teleporter:after{content:attr(data-portal);color:var(--text)}
+#board .bouncer:after{content:'↶';color:#fff}
+.difficulty-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px}
+.difficulty-grid button{border:1px solid #ffffff38;border-radius:9px;background:#ffffff12;color:var(--text);padding:11px 3px;font-size:10px;font-weight:900;letter-spacing:.3px}
+.difficulty-grid button.selected{border-color:var(--accent2);background:color-mix(in srgb,var(--accent2) 22%,transparent)}
+#difficultyInfo{min-height:28px}
+.tabs button{font-size:9px}
+/* The board ID in the base rules requires these selectors to include #board. */
+body[data-ball=neon] #board .ball:after{content:'✦';display:grid;place-items:center;color:#fff;background:var(--ball-color);box-shadow:0 0 15px var(--ball-color),0 0 30px var(--ball-color);font-size:clamp(15px,4vw,26px)}
+body[data-ball=cat] #board .ball:after{content:'🐱'}
+body[data-ball=planet] #board .ball:after{content:'🪐'}
+body[data-ball=heart] #board .ball:after{content:'♥';color:#ff719a}
+body[data-ball=ghost] #board .ball:after{content:'👻'}
+body[data-ball=star] #board .ball:after{content:'★';color:#ffe391}
+body[data-ball=rocket] #board .ball:after{content:'🚀'}
+body[data-ball=frog] #board .ball:after{content:'🐸'}
+body[data-ball=gem] #board .ball:after{content:'◆';color:#90f1ff}
+body[data-ball=dice] #board .ball:after{content:'🎲'}
+body[data-ball=paw] #board .ball:after{content:'🐾'}
+body[data-ball=cat] #board .ball:after,body[data-ball=planet] #board .ball:after,body[data-ball=heart] #board .ball:after,body[data-ball=ghost] #board .ball:after,body[data-ball=star] #board .ball:after,body[data-ball=rocket] #board .ball:after,body[data-ball=frog] #board .ball:after,body[data-ball=gem] #board .ball:after,body[data-ball=dice] #board .ball:after,body[data-ball=paw] #board .ball:after{display:grid;place-items:center;background:none;box-shadow:none;font-size:clamp(18px,5vw,32px);line-height:1;text-align:center;filter:drop-shadow(0 2px 3px #000b)}
+body[data-trail=glow] #board .painted{box-shadow:0 0 13px 3px color-mix(in srgb,var(--filled) 70%,transparent),inset 0 1px #fff7}
+body[data-trail=rainbow] #board .painted{background:hsl(calc(var(--hue) + 260) 80% 70%)}
+body[data-trail=checker] #board .painted{background:conic-gradient(from 90deg,var(--filled) 25%,color-mix(in srgb,var(--filled) 55%,var(--well)) 0 50%,var(--filled) 0 75%,color-mix(in srgb,var(--filled) 55%,var(--well)) 0) 0 0/12px 12px}
+body[data-trail=gold] #board .painted{background:linear-gradient(140deg,#fff3a4,#e7a833 60%,#fff6c3);box-shadow:inset 0 1px #fff8}
+body[data-trail=frost] #board .painted{background:linear-gradient(135deg,#dffaff,#8fcbff);box-shadow:inset 0 0 0 2px #ffffff88}
+body[data-trail=ember] #board .painted{background:radial-gradient(circle at 30% 25%,#ffe374,#f7744b 55%,#b6335a);box-shadow:0 0 10px #e96b45aa}
+body[data-trail=pixel] #board .painted{background:repeating-linear-gradient(0deg,transparent 0 8px,#ffffff33 8px 10px),repeating-linear-gradient(90deg,var(--filled) 0 8px,#ffffff33 8px 10px);border-radius:0}
+body[data-trail=candy] #board .painted{background:repeating-linear-gradient(45deg,#ffa7df 0 8px,#fff3fa 8px 14px,#9be6ff 14px 22px)}
+body[data-trail=aurora] #board .painted{background:linear-gradient(140deg,#72f1d2,#8885f9 55%,#ff9ed7);box-shadow:0 0 9px #8885f988}
+body[data-beacon=diamond] #board .beacon:before{border-radius:3px;clip-path:polygon(50% 0,100% 50%,50% 100%,0 50%)}
+body[data-beacon=square] #board .beacon:before{border-radius:3px}
+body[data-beacon=star] #board .beacon:before{clip-path:polygon(50% 0,63% 35%,100% 35%,70% 58%,82% 100%,50% 74%,18% 100%,30% 58%,0 35%,37% 35%)}
+body[data-beacon=ring] #board .beacon:before{background:var(--well);color:var(--beacon-color);border:3px solid var(--beacon-color);box-shadow:0 0 9px var(--beacon-color)}
+body[data-beacon=flower] #board .beacon:before{border-radius:35% 65% 35% 65%;background:#f5a8e9;box-shadow:0 0 10px #f5a8e9}
+body[data-theme=neon]{--accent:#ff69dc;--accent2:#60ffe7;--panel:#281438;--well:#130a23;--tile:#51305c;--filled:#ee64d2;--text:#fff5fe;--muted:#caa7d3;background:#130a23}
+body[data-theme=lavender]{--accent:#ceb0ff;--accent2:#a0efdc;--panel:#342849;--well:#201831;--tile:#4c3a65;--filled:#bb97f2;--text:#fcf8ff;--muted:#c4b5d4;background:#201831}
+body[data-theme=ice]{--accent:#9deaff;--accent2:#b4f8ff;--panel:#1e3b4e;--well:#102633;--tile:#31576b;--filled:#80cce9;--text:#f2fcff;--muted:#a6cad5;background:#102633}
+body[data-theme=terminal]{--accent:#92f59e;--accent2:#e0fd8e;--panel:#152719;--well:#071309;--tile:#27422b;--filled:#58bd66;--text:#eaffeb;--muted:#a4c9a6;background:#071309}
