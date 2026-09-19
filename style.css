@@ -19,3 +19,24 @@ body[data-brightness=light] .progress,body[data-brightness=sun] .progress{backgr
 body[data-brightness=oled] .board-card,body[data-brightness=oled] .modal{border-color:#33273f;box-shadow:none}
 @media(max-width:375px){.app{padding-left:10px;padding-right:10px}.topbar .brand small{display:none}.topbar .brand strong{font-size:15px}.top-actions{gap:4px}.level-chip{padding:0 7px}.coin-chip{padding:0 7px}.board-bottom span{font-size:8px}}
 @media(max-height:640px){.app{gap:4px}.topbar{flex-basis:35px}.topbar .brand-mark{width:27px;height:27px}.game-strip{flex-basis:17px}.controls{flex-basis:40px}.controls button{min-height:40px}footer{display:none}.board-card{padding:6px}.board-bottom{flex-basis:27px;padding-top:5px}}
+/* Results are a separate, opaque layer above the entire board. */
+#board-wrap.result-active .moving-ball,#board-wrap.result-active .beacon:before{visibility:hidden}
+.win-overlay{z-index:10;background:var(--well);isolation:isolate}
+.win-card{position:relative;z-index:1}
+body{--ball-color:var(--accent);--beacon-color:#ffd58a}
+#board .ball:after{background:radial-gradient(circle at 33% 28%,#fff,var(--ball-color) 43%,color-mix(in srgb,var(--ball-color) 65%,#251047));box-shadow:0 2px 11px #0009,0 0 14px color-mix(in srgb,var(--ball-color) 80%,transparent)}
+body[data-ball=neon] .ball:after{background:var(--ball-color);box-shadow:0 0 14px var(--ball-color),0 0 28px var(--ball-color)}
+#board .beacon:before{background:var(--beacon-color);box-shadow:0 0 12px color-mix(in srgb,var(--beacon-color) 70%,transparent)}
+.mode-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
+.mode-grid button,.secondary,.mod-row button{border:1px solid #ffffff38;border-radius:11px;background:#ffffff12;color:var(--text);padding:11px;font-size:11px;font-weight:900}
+.mode-grid button.selected{border-color:var(--accent2);background:color-mix(in srgb,var(--accent2) 17%,transparent)}
+.color-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px;margin-bottom:12px}
+.color-grid label{font-size:9px;font-weight:900;color:var(--muted);text-align:center;letter-spacing:.5px}
+.color-grid input{display:block;min-width:0;width:100%;height:42px;margin-top:7px;padding:3px;border:1px solid #ffffff40;border-radius:9px;background:var(--well);cursor:pointer}
+.scroll-modal{max-height:84dvh;overflow-y:auto;touch-action:pan-y}.stats-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;margin:17px 0}
+.stats-grid h3{grid-column:1/-1;margin:12px 0 0;color:var(--accent2);font-size:11px;letter-spacing:1px;text-transform:uppercase}
+.stat-card{display:flex;flex-direction:column;gap:7px;min-height:65px;padding:11px;border-radius:12px;background:var(--well)}
+.stat-card span{font-size:10px;color:var(--muted)}.stat-card strong{font-size:17px;color:var(--text)}
+.import-label{display:block;margin:12px 0;padding:13px;border:1px dashed var(--accent);border-radius:11px;text-align:center;color:var(--accent);font-size:11px;font-weight:900;cursor:pointer}.import-label input{display:none}
+.mod-row{display:flex;align-items:center;gap:5px;border-top:1px solid #ffffff26;padding:10px 0}.mod-row span{flex:1;min-width:0;font-size:11px;overflow-wrap:anywhere}.mod-row button{padding:8px 5px;font-size:9px}
+button:disabled{opacity:.4;cursor:not-allowed}button:disabled:active{transform:none}

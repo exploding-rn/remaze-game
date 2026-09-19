@@ -9,6 +9,10 @@ A phone-first, ad-free paint maze with a full-screen touch area, quick level/sho
 - The generator tests whether sliding from the start can cover every tile. A guaranteed winding corridor is used if a random layout fails after 180 attempts.
 - Progress, coins, and cosmetics are saved in this browser with localStorage. Each level tracks completion separately; jumping does not claim earlier levels.
 - The shop accepts coins, or offers the same item free when you have too few. Nothing connects to an ad or payment provider.
+- Settings includes separate paint, ball, accent, and beacon color pickers. Colors and brightness are saved locally.
+- Endless Run starts at stage 1 with three lives. Every stage has a move budget; clearing adds score and coins, while running out of moves or retrying costs a life. You can return to Classic without losing an unfinished run.
+- Stats tracks clears, tiles, moves, swipes, glide distance, restarts, play time on completed/failed stages, coins earned, and endless records. Older saves begin tracking these from this version onward.
+- Mod Packs imports local JSON data for colors and up to 30 hand-built levels per pack. Export the example from the menu to see the schema. Imported grids must be rectangular 0/1 arrays with reachable floor tiles; ordered beacons are checked. Packs cannot execute scripts. Up to 12 packs are stored in this browser.
 - Offline play is available after the first successful visit if the service worker finishes caching. Clearing site data removes progress.
 
 ## Publish from an iPhone
