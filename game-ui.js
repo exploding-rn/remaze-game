@@ -131,14 +131,16 @@ function finish(){
  }
  save.coins+=earned;stats.coinsEarned+=earned;update();persist();beep(740);
 }
-function fail(){
+function fail(reason='moves'){
  save.stats.seconds+=Math.max(1,Math.round((Date.now()-stageStart)/1000));
  save.run.lives--;
+ $('subtitle').textContent=`SCORE ${save.run.score.toLocaleString()} · ${save.run.lives} LIVES`;
+ update();
  if(save.run.lives<=0){
   save.stats.bestStage=Math.max(save.stats.bestStage,save.run.stage-1);
   save.stats.bestScore=Math.max(save.stats.bestScore,save.run.score);
   result('RUN OVER','OUT OF LIVES',`STAGE ${save.run.stage} · ${save.run.score.toLocaleString()} SCORE`,'NEW RUN →');
- }else result('OUT OF MOVES','TRY AGAIN',`${save.run.lives} LIVES LEFT · ${save.run.score.toLocaleString()} SCORE`,'RETRY STAGE →');
+ }else result(reason==='retry'?'STAGE RETRY':'OUT OF MOVES',reason==='retry'?'LIFE SPENT':'TRY AGAIN',`${save.run.lives} LIVES LEFT · ${save.run.score.toLocaleString()} SCORE`,'RETRY STAGE →');
  persist();beep(180);
 }
 function collectBeacon(index){
@@ -181,7 +183,8 @@ function nextLevel(){
 }
 function restart(){
  save.stats.restarts++;
- if(save.mode==='endless'&&!won){fail();return}
+ if(save.mode==='endless'&&!won){fail('retry');return}
+ if(save.mode==='endless'&&save.run.lives<=0){startRun();return}
  load();
 }
 // The full play screen accepts directional swipes; buttons and open dialogs keep their taps.
