@@ -3,8 +3,9 @@
 const $ = id => document.getElementById(id);
 const defaults = {
  level:1, highest:1, completed:{}, brain:false, brightness:'dark', coins:0,
- owned:{ball:['classic'],theme:['midnight'],trail:['paint']},
- selected:{ball:'classic',theme:'midnight',trail:'paint'}, sound:true,
+ owned:{ball:['classic'],theme:['midnight'],trail:['paint'],beacon:['classic']},
+ selected:{ball:'classic',theme:'midnight',trail:'paint',beacon:'classic'}, sound:true,
+ endlessDifficulty:'medium',
  mode:'classic', colors:{}, packs:[], activePack:null, packLevel:1,
  run:null, stats:{clears:0,tiles:0,moves:0,coinsEarned:0,seconds:0,swipes:0,distance:0,restarts:0,perfect:0,runs:0,bestStage:0,bestScore:0,fastest:null}
 };
@@ -19,9 +20,23 @@ if(!['light','dark','sun','oled'].includes(save.brightness))save.brightness='dar
 if(!['classic','endless','pack'].includes(save.mode))save.mode='classic';
 if(save.mode==='pack'&&!save.packs.some(p=>p.id===save.activePack))save.mode='classic';
 if(save.mode==='endless'&&(!save.run||save.run.lives<1))save.run=null;
-const catalog={ball:[['classic','Classic','●',0],['neon','Neon spark','✦',75],['cat','Cat mode','🐱',180],['planet','Little planet','🪐',250]],theme:[['midnight','Midnight','🌙',0],['peach','Peach dusk','🌅',100],['ocean','Deep ocean','🌊',160],['forest','Soft forest','🌿',200]],trail:[['paint','Fresh paint','〰',0],['glow','Afterglow','✨',110],['rainbow','Rainbow road','🌈',220]]};
+const difficulties={
+ baby:{lives:6,budget:2.6,pairs:0,bounces:0,description:'6 lives · huge move budget · special tiles later'},
+ easy:{lives:5,budget:2.1,pairs:0,bounces:1,description:'5 lives · forgiving moves · bounce tiles later'},
+ medium:{lives:3,budget:1.6,pairs:1,bounces:1,description:'3 lives · some special tiles'},
+ hard:{lives:2,budget:1.25,pairs:1,bounces:2,description:'2 lives · tight moves · more special tiles'},
+ hardcore:{lives:1,budget:1.05,pairs:1,bounces:2,description:'1 life · very tight moves'},
+ impossiglide:{lives:1,budget:.8,pairs:2,bounces:3,description:'1 life · brutal moves · maximum chaos'}
+};
+if(!difficulties[save.endlessDifficulty])save.endlessDifficulty='medium';
+const catalog={
+ ball:[['classic','Classic','●',0],['neon','Neon spark','✦',75],['cat','Cat mode','🐱',180],['planet','Little planet','🪐',250],['heart','Heart','♥',90],['ghost','Ghost','👻',100],['star','Star','★',110],['rocket','Rocket','🚀',130],['frog','Frog','🐸',150],['gem','Gem','◆',160],['dice','Dice','🎲',170],['paw','Paw','🐾',190]],
+ theme:[['midnight','Midnight','🌙',0],['peach','Peach dusk','🌅',100],['ocean','Deep ocean','🌊',160],['forest','Soft forest','🌿',200],['neon','Neon city','🌆',110],['lavender','Lavender','🪻',120],['ice','Ice cave','❄️',140],['terminal','Retro terminal','💻',150]],
+ trail:[['paint','Fresh paint','〰',0],['glow','Afterglow','✨',110],['rainbow','Rainbow road','🌈',220],['checker','Checkerboard','▦',80],['gold','Gold rush','✦',90],['frost','Frost','❄',100],['ember','Embers','🔥',120],['pixel','Pixel dust','▪',130],['candy','Candy stripe','🍬',150],['aurora','Aurora','🌌',170]],
+ beacon:[['classic','Classic','①',0],['diamond','Diamonds','◆',75],['square','Squares','▣',85],['star','Stars','★',95],['ring','Rings','◎',105],['flower','Flowers','✿',115]]
+};
 const directions=[[1,0],[-1,0],[0,1],[0,-1]];
-let grid,pos,painted,moves=0,total,won=false,busy=false,tab='ball',audio,cells=[],ball,pending=null,animationId=0,beacons=[],beaconCount=0,gesture=null,stageStart=Date.now(),moveLimit=0;
+let grid,pos,painted,moves=0,total,won=false,busy=false,tab='ball',audio,cells=[],ball,pending=null,animationId=0,beacons=[],beaconCount=0,teleporters=[],bouncers=[],gesture=null,stageStart=Date.now(),moveLimit=0;
 function persist(){try{localStorage.setItem(STORAGE,JSON.stringify(save))}catch{toast('Storage full. Progress may not save.')}}
 function toast(message){const el=$('toast');el.textContent=message;el.classList.add('show');clearTimeout(toast.timer);toast.timer=setTimeout(()=>el.classList.remove('show'),2700)}
 function beep(freq=470){if(!save.sound)return;try{audio??=new (window.AudioContext||window.webkitAudioContext)();const o=audio.createOscillator(),g=audio.createGain();o.type='sine';o.frequency.setValueAtTime(freq,audio.currentTime);o.frequency.exponentialRampToValueAtTime(freq*1.34,audio.currentTime+.08);g.gain.setValueAtTime(.045,audio.currentTime);g.gain.exponentialRampToValueAtTime(.001,audio.currentTime+.12);o.connect(g).connect(audio.destination);o.start();o.stop(audio.currentTime+.13)}catch{}}
@@ -63,6 +78,9 @@ function draw(){
   cell.style.setProperty('--hue',`${x*19+y*26}deg`);
   const marker=beacons.findIndex(p=>p.x===x&&p.y===y);
   if(marker>=0){cell.classList.add('beacon');cell.dataset.beacon=String(marker+1)}
+  const portal=teleporters.findIndex(pair=>(pair.a.x===x&&pair.a.y===y)||(pair.b.x===x&&pair.b.y===y));
+  if(portal>=0){cell.classList.add('teleporter');cell.dataset.portal=String.fromCharCode(65+portal)}
+  if(bouncers.some(p=>p.x===x&&p.y===y))cell.classList.add('bouncer');
   cells.push(cell);frag.append(cell);
  }));
  ball=document.createElement('div');ball.className='moving-ball ball';frag.append(ball);
@@ -73,11 +91,14 @@ function load(level=save.level){
  animationId++;pending=null;gesture=null;busy=false;won=false;
  let gen,label,subtitle;
  if(save.mode==='endless'){
-  if(!save.run)save.run={stage:1,lives:3,score:0};
-  const stage=save.run.stage;
-  gen=generate(100000+stage*7919,stage>=3);
-  label=String(stage);subtitle=`SCORE ${save.run.score.toLocaleString()} · ${save.run.lives} LIVES`;
-  moveLimit=Math.max(14,Math.ceil(gen.grid.flat().filter(Boolean).length*(stage>=3?1.35:1.15)));
+  if(!save.run)save.run={stage:1,lives:difficulties[save.endlessDifficulty].lives,score:0,difficulty:save.endlessDifficulty};
+  const stage=save.run.stage,difficulty=difficulties[save.run.difficulty]||difficulties.medium;
+  const seed=100000+stage*7919,brain=stage>=(save.run.difficulty==='baby'?6:save.run.difficulty==='easy'?4:3);
+  const pairs=save.run.difficulty==='baby'?(stage>=5?1:0):save.run.difficulty==='easy'?(stage>=4?1:0):difficulty.pairs;
+  const bounce=save.run.difficulty==='baby'?(stage>=7?1:0):save.run.difficulty==='easy'?(stage>=2?1:0):difficulty.bounces;
+  gen=decorateLevel(generate(seed,brain),seed,pairs,bounce);
+  label=String(stage);subtitle=`${(save.run.difficulty||'medium').toUpperCase()} · ${save.run.score.toLocaleString()} PTS · ${save.run.lives} ♥`;
+  moveLimit=Math.max(8,Math.ceil(gen.grid.flat().filter(Boolean).length*difficulty.budget));
  }else if(save.mode==='pack'&&pack()){
   const levels=pack().levels;
   save.packLevel=Math.min(Math.max(1,Number(save.packLevel)||1),levels.length);
@@ -85,11 +106,13 @@ function load(level=save.level){
   moveLimit=0;
  }else{
   save.mode='classic';level=Math.max(1,Math.min(999999999,Math.trunc(Number(level))||1));save.level=level;
-  gen=generate(level,save.brain);label=level.toLocaleString();
+  gen=generate(level,save.brain);
+  if(save.brain||level>=25)gen=decorateLevel(gen,level^(save.brain?0x51f15e:0),1,save.brain||level>=50?1:0);
+  label=level.toLocaleString();
   subtitle=save.brain?'Paint every tile. Reach beacon 1, then 2.':level<=100?'The road to chaos starts here.':'Procedural chaos. Good luck out there.';
   moveLimit=0;
  }
- grid=gen.grid;beacons=gen.beacons||[];beaconCount=0;pos={...gen.start};
+ grid=gen.grid;beacons=gen.beacons||[];teleporters=gen.teleporters||[];bouncers=gen.bouncers||[];beaconCount=0;pos={...gen.start};
  painted=new Set([pos.y*grid[0].length+pos.x]);moves=0;total=grid.flat().filter(Boolean).length;stageStart=Date.now();
  $('win').hidden=true;$('board-wrap').classList.remove('result-active');
  $('levelName').textContent=label;$('subtitle').textContent=subtitle;
@@ -100,7 +123,9 @@ function load(level=save.level){
  $('jump').disabled=save.mode!=='classic';$('previous').disabled=save.mode==='endless'||(save.mode==='pack'&&save.packLevel===1);
  $('next').disabled=save.mode==='endless';$('restart').textContent=save.mode==='endless'?'↺ RETRY (−1 LIFE)':'↺ RESTART';
  document.body.dataset.ball=save.selected.ball;document.body.dataset.theme=save.selected.theme;
- document.body.dataset.trail=save.selected.trail;document.body.dataset.brightness=save.brightness;
+ document.body.dataset.trail=save.selected.trail;document.body.dataset.beacon=save.selected.beacon;document.body.dataset.brightness=save.brightness;
+ document.querySelectorAll('[data-difficulty]').forEach(b=>{b.classList.toggle('selected',b.dataset.difficulty===save.endlessDifficulty);b.setAttribute('aria-pressed',String(b.dataset.difficulty===save.endlessDifficulty))});
+ $('difficultyInfo').textContent=`${difficulties[save.endlessDifficulty].description}. ${save.run&&save.run.lives>0&&save.run.difficulty!==save.endlessDifficulty?'Selection applies to your next run.':'Each difficulty keeps the same seeded stage layouts.'}`;
  draw();update();applyColors();persist();
 }
 function result(title,kicker,message,action){
@@ -118,6 +143,9 @@ function finish(){
   earned=15+Math.round(total/3);run.score+=score;
   stats.bestStage=Math.max(stats.bestStage,run.stage);
   stats.bestScore=Math.max(stats.bestScore,run.score);
+  stats.bestByDifficulty??={};
+  const best=stats.bestByDifficulty[run.difficulty||'medium']||{stage:0,score:0};
+  stats.bestByDifficulty[run.difficulty||'medium']={stage:Math.max(best.stage,run.stage),score:Math.max(best.score,run.score)};
   run.stage++;
   result('STAGE CLEARED','ENDLESS RUN',`+${score} SCORE · +${earned} COINS`,'NEXT STAGE →');
  }else if(save.mode==='pack'){
@@ -131,14 +159,16 @@ function finish(){
  }
  save.coins+=earned;stats.coinsEarned+=earned;update();persist();beep(740);
 }
-function fail(){
+function fail(reason='moves'){
  save.stats.seconds+=Math.max(1,Math.round((Date.now()-stageStart)/1000));
  save.run.lives--;
+ $('subtitle').textContent=`${(save.run.difficulty||'medium').toUpperCase()} · ${save.run.score.toLocaleString()} PTS · ${save.run.lives} ♥`;
+ update();
  if(save.run.lives<=0){
   save.stats.bestStage=Math.max(save.stats.bestStage,save.run.stage-1);
   save.stats.bestScore=Math.max(save.stats.bestScore,save.run.score);
   result('RUN OVER','OUT OF LIVES',`STAGE ${save.run.stage} · ${save.run.score.toLocaleString()} SCORE`,'NEW RUN →');
- }else result('OUT OF MOVES','TRY AGAIN',`${save.run.lives} LIVES LEFT · ${save.run.score.toLocaleString()} SCORE`,'RETRY STAGE →');
+ }else result(reason==='retry'?'STAGE RETRY':'OUT OF MOVES',reason==='retry'?'LIFE SPENT':'TRY AGAIN',`${save.run.lives} LIVES LEFT · ${save.run.score.toLocaleString()} SCORE`,'RETRY STAGE →');
  persist();beep(180);
 }
 function collectBeacon(index){
@@ -148,15 +178,20 @@ function collectBeacon(index){
 }
 function move(dx,dy){
  if(won)return;if(busy){pending=[dx,dy];return}
- const s=step(grid,pos.x,pos.y,dx,dy);if(!s.cells.length)return;
+ const s=traceMove(grid,pos.x,pos.y,dx,dy,{teleporters,bouncers});if(!s.cells.length)return;
  busy=true;moves++;save.stats.moves++;save.stats.distance+=s.cells.length;beep(390);update();
- const token=animationId,start=tilePosition(pos.x,pos.y),end=tilePosition(s.x,s.y);
- const duration=Math.min(240,Math.max(63,s.cells.length*30));let began=null,paintedCount=0;
+ const token=animationId,startIndex=pos.y*grid[0].length+pos.x;
+ const duration=Math.min(420,Math.max(75,s.cells.length*42));let began=null,paintedCount=0;
  function paint(index){if(!painted.has(index))save.stats.tiles++;painted.add(index);cells[index].classList.add('painted');collectBeacon(index)}
  function frame(now){
   if(token!==animationId)return;if(began===null)began=now;
   const t=Math.min(1,(now-began)/duration),travel=t*s.cells.length;
-  ball.style.transform=`translate3d(${start.left+(end.left-start.left)*t}px,${start.top+(end.top-start.top)*t}px,0)`;
+  const segment=Math.min(s.cells.length-1,Math.floor(travel));
+  const before=segment?s.cells[segment-1]:startIndex;
+  const from=tilePosition(before%grid[0].length,Math.floor(before/grid[0].length));
+  const target=s.cells[segment],to=tilePosition(target%grid[0].length,Math.floor(target/grid[0].length));
+  const mix=s.jumps.includes(segment)?1:Math.min(1,travel-segment);
+  ball.style.transform=`translate3d(${from.left+(to.left-from.left)*mix}px,${from.top+(to.top-from.top)*mix}px,0)`;
   while(paintedCount<Math.min(s.cells.length,Math.floor(travel)))paint(s.cells[paintedCount++]);
   if(t<1){requestAnimationFrame(frame);return}
   while(paintedCount<s.cells.length)paint(s.cells[paintedCount++]);
@@ -167,7 +202,7 @@ function move(dx,dy){
  }
  requestAnimationFrame(frame);
 }
-function startRun(){save.mode='endless';save.activePack=null;save.run={stage:1,lives:3,score:0};save.stats.runs++;load()}
+function startRun(){save.mode='endless';save.activePack=null;save.run={stage:1,lives:difficulties[save.endlessDifficulty].lives,score:0,difficulty:save.endlessDifficulty};save.stats.runs++;load()}
 function nextLevel(){
  if(save.mode==='endless'){
   if(save.run.lives<=0){startRun();return}
@@ -181,7 +216,8 @@ function nextLevel(){
 }
 function restart(){
  save.stats.restarts++;
- if(save.mode==='endless'&&!won){fail();return}
+ if(save.mode==='endless'&&!won){fail('retry');return}
+ if(save.mode==='endless'&&save.run.lives<=0){startRun();return}
  load();
 }
 // The full play screen accepts directional swipes; buttons and open dialogs keep their taps.
@@ -217,6 +253,13 @@ $('settingsClose').onclick=$('settingsDone').onclick=()=>$('settingsDialog').clo
 $('brainMode').onclick=()=>{save.brain=!save.brain;if(save.mode==='classic')load();else persist();toast(save.brain?'Brain Mode on for Classic.':'Brain Mode off for Classic.')};
 $('classicMode').onclick=()=>{save.mode='classic';save.activePack=null;load();toast('Classic mode')};
 $('endlessMode').onclick=()=>{if(save.mode==='endless'){toast('Run already in progress');return}if(save.run&&save.run.lives>0){save.mode='endless';load();toast('Endless run resumed')}else{startRun();toast('Endless run started')}};
+$('newRun').onclick=()=>{startRun();$('settingsDialog').close();toast(`${save.endlessDifficulty.toUpperCase()} run started`)};
+document.querySelectorAll('[data-difficulty]').forEach(b=>b.onclick=()=>{
+ save.endlessDifficulty=b.dataset.difficulty;
+ document.querySelectorAll('[data-difficulty]').forEach(item=>{item.classList.toggle('selected',item===b);item.setAttribute('aria-pressed',String(item===b))});
+ $('difficultyInfo').textContent=`${difficulties[save.endlessDifficulty].description}. ${save.run&&save.run.lives>0?'Applies to your next run.':'Start Endless to play.'}`;
+ persist();toast(`${b.textContent} selected for the next run`);
+});
 $('restart').onclick=restart;$('previous').onclick=()=>{if(save.mode==='pack'){save.packLevel--;load()}else load(save.level-1)};
 $('next').onclick=$('nextWin').onclick=nextLevel;
 $('jump').onclick=()=>{$('levelInput').value=save.level;$('jumpDialog').showModal();$('levelInput').select()};
@@ -246,6 +289,7 @@ function renderShop(){
 }
 function renderStats(){
  const s=save.stats,entries=[['Career','Levels cleared',s.clears],['Career','Tiles painted',s.tiles],['Career','Moves made',s.moves],['Career','Coins earned',s.coinsEarned],['Career','Time played',`${Math.floor(s.seconds/3600)}h ${Math.floor(s.seconds%3600/60)}m`],['Performance','Perfect clears',s.perfect],['Performance','Average moves',s.clears?Math.round(s.moves/s.clears):0],['Performance','Fastest clear',s.fastest===null?'—':`${s.fastest}s`],['Performance','Swipes',s.swipes],['Performance','Distance glided',s.distance],['Performance','Restarts',s.restarts],['Endless','Runs started',s.runs],['Endless','Best stage cleared',s.bestStage],['Endless','Best score',s.bestScore.toLocaleString()],['Cosmetics','Custom colors',Object.keys(save.colors).length],['Cosmetics','Mod packs',save.packs.length]];
+ for(const name of Object.keys(difficulties))if(s.bestByDifficulty?.[name])entries.push(['Endless records',name.toUpperCase(),`Stage ${s.bestByDifficulty[name].stage} · ${s.bestByDifficulty[name].score.toLocaleString()} pts`]);
  const content=$('statsContent');content.replaceChildren();let group='';
  for(const [section,label,value] of entries){if(group!==section){group=section;const h=document.createElement('h3');h.textContent=section;content.append(h)}const item=document.createElement('div');item.className='stat-card';const span=document.createElement('span'),strong=document.createElement('strong');span.textContent=label;strong.textContent=String(value);item.append(span,strong);content.append(item)}
 }
@@ -266,8 +310,14 @@ function validatePack(raw){
    if(!slideCoverage(level.grid,level.start))throw Error(`Level ${i+1}: every floor tile must be reachable by sliding.`);
    const markers=level.beacons||[];
    if(!Array.isArray(markers)||markers.length>4||!markers.every(valid)||new Set(markers.map(p=>`${p.x},${p.y}`)).size!==markers.length)throw Error(`Level ${i+1}: invalid beacons.`);
-   if(markers.length&&!canVisitBeacons(level.grid,level.start,markers))throw Error(`Level ${i+1}: ordered beacons cannot be reached.`);
-   return {grid:level.grid,start:{x:level.start.x,y:level.start.y},beacons:markers.map(p=>({x:p.x,y:p.y}))};
+   const teleporters=level.teleporters||[],bouncers=level.bouncers||[];
+   if(!Array.isArray(teleporters)||teleporters.length>3||!teleporters.every(pair=>pair&&valid(pair.a)&&valid(pair.b)))throw Error(`Level ${i+1}: use up to three valid teleporter pairs.`);
+   if(!Array.isArray(bouncers)||bouncers.length>8||!bouncers.every(valid))throw Error(`Level ${i+1}: use up to eight valid bounce tiles.`);
+   const occupied=[level.start,...markers,...bouncers,...teleporters.flatMap(pair=>[pair.a,pair.b])];
+   if(new Set(occupied.map(p=>`${p.x},${p.y}`)).size!==occupied.length)throw Error(`Level ${i+1}: start, beacons and special tiles cannot overlap.`);
+   const specials={teleporters:teleporters.map(pair=>({a:{x:pair.a.x,y:pair.a.y},b:{x:pair.b.x,y:pair.b.y}})),bouncers:bouncers.map(p=>({x:p.x,y:p.y}))};
+   if(!specialCoverage(level.grid,level.start,specials,markers))throw Error(`Level ${i+1}: special tiles block coverage or ordered beacons.`);
+   return {grid:level.grid,start:{x:level.start.x,y:level.start.y},beacons:markers.map(p=>({x:p.x,y:p.y})),...specials};
   });
  }
  if(!Object.keys(out.colors).length&&!out.levels.length)throw Error('Add colors or levels.');
@@ -292,7 +342,7 @@ $('importMod').onchange=async e=>{
  e.target.value='';
 };
 $('exportExample').onclick=()=>{
- const example={format:'glide-pack-v1',name:'My Glide Pack',colors:{paint:'#ad8cff',ball:'#f6daff',accent:'#b99aff',beacon:'#ffe09c'},levels:[{grid:[[0,0,0,0,0],[0,1,1,1,0],[0,0,0,1,0],[0,1,1,1,0],[0,0,0,0,0]],start:{x:1,y:1},beacons:[{x:3,y:1}]}]};
+ const example={format:'glide-pack-v1',name:'My Glide Pack',colors:{paint:'#ad8cff',ball:'#f6daff',accent:'#b99aff',beacon:'#ffe09c'},levels:[{grid:[[0,0,0,0,0],[0,1,1,1,0],[0,0,0,1,0],[0,1,1,1,0],[0,0,0,0,0]],start:{x:1,y:1},beacons:[{x:3,y:1}],teleporters:[{a:{x:3,y:3},b:{x:1,y:3}}],bouncers:[{x:2,y:3}]}]};
  const blob=new Blob([JSON.stringify(example,null,2)],{type:'application/json'}),url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download='glide-pack-example.json';a.click();setTimeout(()=>URL.revokeObjectURL(url),1000);
 };
 load();
